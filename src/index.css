@@ -44,7 +44,7 @@
     --radius: 0.625rem;
 
     /* Status colors */
-    --status-new: 217 91% 60%;
+    --status-new: 0 0% 1%;
     --status-new-bg: 217 91% 97%;
     --status-in-progress: 38 92% 50%;
     --status-in-progress-bg: 38 92% 97%;
