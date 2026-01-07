@@ -56,18 +56,15 @@ export function useOrders() {
 
       if (error) throw error;
 
+      // When an order is received, trigger the webhook via the Supabase Edge Function
       if (newStatus === 'received') {
         try {
-          const response = await fetch('http://3.19.185.136:5678/webhook/a86a057c-017e-48db-8f0d-54ee9161e489', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(order),
+          const { data: functionData, error: functionError } = await supabase.functions.invoke('send-webhook', {
+            body: order,
           });
 
-          if (!response.ok) {
-            throw new Error(`Webhook failed with status: ${response.status}`);
+          if (functionError) {
+            throw new Error(`Edge function invocation failed: ${functionError.message}`);
           }
         } catch (webhookError) {
           console.error('Error sending webhook:', webhookError);
