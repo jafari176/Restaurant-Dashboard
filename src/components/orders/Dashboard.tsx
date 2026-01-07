@@ -58,7 +58,7 @@ export function Dashboard() {
 
   const handleAccept = async (order: Order) => {
     setIsProcessing(true);
-    await updateOrderStatus(order.order_id, 'in_progress', {
+    await updateOrderStatus(order, 'in_progress', {
       accepted_at: new Date().toISOString(),
     });
     setIsProcessing(false);
@@ -76,7 +76,7 @@ export function Dashboard() {
 
   const handleMarkReady = async (order: Order) => {
     setIsProcessing(true);
-    await updateOrderStatus(order.order_id, 'ready', {
+    await updateOrderStatus(order, 'ready', {
       ready_at: new Date().toISOString(),
     });
     setIsProcessing(false);
@@ -85,7 +85,7 @@ export function Dashboard() {
 
   const handleMarkReceived = async (order: Order) => {
     setIsProcessing(true);
-    await updateOrderStatus(order.order_id, 'received', {
+    await updateOrderStatus(order, 'received', {
       received_at: new Date().toISOString(),
     });
     setIsProcessing(false);

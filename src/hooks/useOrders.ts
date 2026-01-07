@@ -44,7 +44,7 @@ export function useOrders() {
   }, [toast]);
 
   const updateOrderStatus = async (
-    orderId: string,
+    order: Order,
     newStatus: OrderStatus,
     additionalFields: Partial<Order> = {}
   ) => {
@@ -52,13 +52,36 @@ export function useOrders() {
       const { error } = await supabase
         .from('orders')
         .update({ status: newStatus, ...additionalFields })
-        .eq('order_id', orderId);
+        .eq('order_id', order.order_id);
 
       if (error) throw error;
 
+      if (newStatus === 'received') {
+        try {
+          const response = await fetch('http://3.19.185.136:5678/webhook/a86a057c-017e-48db-8f0d-54ee9161e489', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(order),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Webhook failed with status: ${response.status}`);
+          }
+        } catch (webhookError) {
+          console.error('Error sending webhook:', webhookError);
+          toast({
+            title: 'Webhook Error',
+            description: 'Failed to send update to webhook.',
+            variant: 'destructive',
+          });
+        }
+      }
+
       toast({
         title: 'Success',
-        description: `Order ${orderId} updated to ${newStatus.replace('_', ' ')}`,
+        description: `Order ${order.order_id} updated to ${newStatus.replace('_', ' ')}`,
       });
 
       return true;
