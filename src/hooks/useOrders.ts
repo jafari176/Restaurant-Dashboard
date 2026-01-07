@@ -56,8 +56,8 @@ export function useOrders() {
 
       if (error) throw error;
 
-      // When an order is received, trigger the webhook via the Supabase Edge Function
-      if (newStatus === 'received') {
+      // When an order is ready, trigger the webhook via the Supabase Edge Function
+      if (newStatus === 'ready') {
         try {
           const { data: functionData, error: functionError } = await supabase.functions.invoke('send-webhook', {
             body: order,
