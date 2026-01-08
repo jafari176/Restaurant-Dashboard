@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Package, RefreshCw } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Package, RefreshCw, Settings, X } from 'lucide-react';
+import { formatDistanceToNow, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { useNavigate } from 'react-router-dom';
 import { useOrders } from '@/hooks/useOrders';
 import { Order } from '@/types/order';
 import { TabButton } from './TabButton';
@@ -8,6 +10,7 @@ import { SearchBar } from './SearchBar';
 import { OrderGrid } from './OrderGrid';
 import { OrderDetailModal } from './OrderDetailModal';
 import { Button } from '@/components/ui/button';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +32,11 @@ const tabs: { id: TabType; label: string; colorClass: string }[] = [
 ];
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { ordersByStatus, loading, updateOrderStatus, deleteOrder, refetch, lastRefreshedAt } = useOrders();
   const [activeTab, setActiveTab] = useState<TabType>('new');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [rejectOrder, setRejectOrder] = useState<Order | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -44,17 +49,50 @@ export function Dashboard() {
   }, []);
 
   const filteredOrders = useMemo(() => {
-    const orders = ordersByStatus[activeTab];
-    if (!searchQuery) return orders;
+    let orders = ordersByStatus[activeTab];
 
-    const query = searchQuery.toLowerCase();
-    return orders.filter(
-      (order) =>
-        order.order_id.toLowerCase().includes(query) ||
-        order.customer_name.toLowerCase().includes(query) ||
-        order.phone_number.includes(query)
-    );
-  }, [ordersByStatus, activeTab, searchQuery]);
+    // Apply date range filter
+    if (dateRange?.from) {
+      const fromDate = dateRange.from;
+      const toDate = dateRange.to || dateRange.from;
+
+      const isDateInRange = (dateStr: string | null) => {
+        if (!dateStr) return false;
+        const date = parseISO(dateStr);
+
+        // Check if date is same as fromDate or toDate (inclusive)
+        if (isSameDay(date, fromDate) || isSameDay(date, toDate)) return true;
+
+        // Check if date is between fromDate and toDate
+        if (isAfter(date, fromDate) && isBefore(date, toDate)) return true;
+
+        return false;
+      };
+
+      orders = orders.filter((order) => {
+        // Check creation date or any status dates
+        return (
+          isDateInRange(order.created_at) ||
+          isDateInRange(order.accepted_at) ||
+          isDateInRange(order.ready_at) ||
+          isDateInRange(order.received_at)
+        );
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      orders = orders.filter(
+        (order) =>
+          order.order_id.toLowerCase().includes(query) ||
+          order.customer_name.toLowerCase().includes(query) ||
+          order.phone_number.includes(query)
+      );
+    }
+
+    return orders;
+  }, [ordersByStatus, activeTab, searchQuery, dateRange]);
 
   const handleAccept = async (order: Order) => {
     setIsProcessing(true);
@@ -124,16 +162,27 @@ export function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refetch}
-              disabled={loading}
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/admin')}
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Admin
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refetch}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -153,13 +202,31 @@ export function Dashboard() {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search by order ID, customer name, or phone..."
-          />
+        {/* Search and Filters */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by order ID, customer name, or phone..."
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+            {dateRange && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setDateRange(undefined)}
+                title="Clear date filter"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Orders Grid */}

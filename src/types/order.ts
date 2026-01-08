@@ -19,5 +19,7 @@ export interface Order {
   ready_at: string | null;
   received_at: string | null;
   created_at: string;
+  subtotal: number;
+  subtotal_with_tax: number;
   order_items?: OrderItem[];
 }
