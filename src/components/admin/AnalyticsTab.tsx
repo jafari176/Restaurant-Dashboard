@@ -64,16 +64,19 @@ export function AnalyticsTab() {
     <div className="space-y-6">
       {/* Date Filter */}
       <div className="flex items-center gap-2">
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
+        <div className="flex-1">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+        </div>
         {dateRange && (
           <Button
             variant="outline"
             size="icon"
             onClick={() => setDateRange(undefined)}
             title="Clear date filter"
+            className="shrink-0"
           >
             <X className="h-4 w-4" />
           </Button>

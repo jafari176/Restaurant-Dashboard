@@ -48,6 +48,46 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Play sound when a new order arrives
+  useEffect(() => {
+    // This effect runs when the list of new orders changes.
+    // We use a ref to check if the component has mounted to avoid playing sound on initial load.
+    // A better approach is to compare previous and current order counts.
+    const hasMounted = sessionStorage.getItem('dashboardMounted');
+    const newOrdersCount = ordersByStatus.new.length;
+
+    if (hasMounted && newOrdersCount > 0) {
+      const lastKnownCount = parseInt(sessionStorage.getItem('lastNewOrdersCount') || '0', 10);
+      
+      if (newOrdersCount > lastKnownCount) {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioContext) {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.2);
+        }
+      }
+    }
+    
+    sessionStorage.setItem('lastNewOrdersCount', newOrdersCount.toString());
+    if (!hasMounted) {
+      sessionStorage.setItem('dashboardMounted', 'true');
+    }
+    
+    // Cleanup mounted status on unmount
+    return () => {
+      // Keep sessionStorage for reload persistence, but you could clear it here if needed.
+      // sessionStorage.removeItem('dashboardMounted');
+      // sessionStorage.removeItem('lastNewOrdersCount');
+    };
+  }, [ordersByStatus.new]);
+
   const filteredOrders = useMemo(() => {
     let orders = ordersByStatus[activeTab];
 
@@ -203,25 +243,26 @@ export function Dashboard() {
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search by order ID, customer name, or phone..."
-            />
-          </div>
+        <div className="mb-6 flex flex-col gap-4">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by order ID, customer name, or phone..."
+          />
           <div className="flex items-center gap-2">
-            <DateRangePicker
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
+            <div className="flex-1">
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
             {dateRange && (
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setDateRange(undefined)}
                 title="Clear date filter"
+                className="shrink-0"
               >
                 <X className="h-4 w-4" />
               </Button>

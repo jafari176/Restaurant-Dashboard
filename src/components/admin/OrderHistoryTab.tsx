@@ -81,21 +81,24 @@ export function OrderHistoryTab() {
         <CardContent>
           {/* Search and Filters */}
           <div className="flex flex-col gap-4 mb-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by order ID, customer, or phone..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by order ID, customer, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
+            {/* Status Filter and Refresh */}
+            <div className="flex items-center gap-2">
               <Select
                 value={statusFilter}
                 onValueChange={(value) => setStatusFilter(value as OrderStatus | 'all')}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -106,21 +109,26 @@ export function OrderHistoryTab() {
                   <SelectItem value="received">Received</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={refetch}>
+              <Button variant="outline" size="icon" onClick={refetch} className="shrink-0">
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
+
+            {/* Date Range Filter */}
             <div className="flex items-center gap-2">
-              <DateRangePicker
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-              />
+              <div className="flex-1">
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                />
+              </div>
               {dateRange && (
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => setDateRange(undefined)}
                   title="Clear date filter"
+                  className="shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
