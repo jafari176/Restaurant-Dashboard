@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Package, RefreshCw, Settings, X } from 'lucide-react';
+import { Package, RefreshCw, Settings, X, Volume2, VolumeX } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
@@ -40,6 +40,8 @@ export function Dashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [rejectOrder, setRejectOrder] = useState<Order | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const [, setTick] = useState(0);
 
   // Update "time ago" display every 10 seconds
@@ -48,45 +50,46 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Play sound when a new order arrives
+  const handleEnableSound = () => {
+    const dummySound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    dummySound.play().then(() => {
+      dummySound.pause();
+      setIsSoundEnabled(true);
+    }).catch(error => {
+      console.error("Could not enable sound:", error);
+    });
+  };
+
   useEffect(() => {
     // This effect runs when the list of new orders changes.
-    // We use a ref to check if the component has mounted to avoid playing sound on initial load.
-    // A better approach is to compare previous and current order counts.
-    const hasMounted = sessionStorage.getItem('dashboardMounted');
-    const newOrdersCount = ordersByStatus.new.length;
+    if (!isSoundEnabled) return;
 
-    if (hasMounted && newOrdersCount > 0) {
-      const lastKnownCount = parseInt(sessionStorage.getItem('lastNewOrdersCount') || '0', 10);
-      
-      if (newOrdersCount > lastKnownCount) {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        if (audioContext) {
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-          oscillator.start();
-          oscillator.stop(audioContext.currentTime + 0.2);
-        }
-      }
+    const newOrdersCount = ordersByStatus.new.length;
+    const lastKnownCount = parseInt(sessionStorage.getItem('lastNewOrdersCount') || '0', 10);
+
+    if (newOrdersCount > lastKnownCount) {
+      const newAudio = new Audio('/new_order_alert.mp3');
+      newAudio.loop = true;
+      newAudio.play().catch(error => {
+        // Autoplay was prevented.
+        console.error("Audio autoplay was prevented:", error);
+      });
+      setAudio(newAudio);
     }
-    
+
     sessionStorage.setItem('lastNewOrdersCount', newOrdersCount.toString());
-    if (!hasMounted) {
-      sessionStorage.setItem('dashboardMounted', 'true');
-    }
-    
-    // Cleanup mounted status on unmount
+
+  }, [ordersByStatus.new, isSoundEnabled]);
+
+  // Cleanup audio on component unmount
+  useEffect(() => {
     return () => {
-      // Keep sessionStorage for reload persistence, but you could clear it here if needed.
-      // sessionStorage.removeItem('dashboardMounted');
-      // sessionStorage.removeItem('lastNewOrdersCount');
+      if (audio) {
+        audio.pause();
+        setAudio(null);
+      }
     };
-  }, [ordersByStatus.new]);
+  }, [audio]);
 
   const filteredOrders = useMemo(() => {
     let orders = ordersByStatus[activeTab];
@@ -135,6 +138,10 @@ export function Dashboard() {
   }, [ordersByStatus, activeTab, searchQuery, dateRange]);
 
   const handleAccept = async (order: Order) => {
+    if (audio) {
+      audio.pause();
+      setAudio(null);
+    }
     setIsProcessing(true);
     await updateOrderStatus(order, 'in_progress', {
       accepted_at: new Date().toISOString(),
@@ -144,6 +151,10 @@ export function Dashboard() {
   };
 
   const handleReject = async () => {
+    if (audio) {
+      audio.pause();
+      setAudio(null);
+    }
     if (!rejectOrder) return;
     setIsProcessing(true);
     await deleteOrder(rejectOrder.order_id);
@@ -222,6 +233,33 @@ export function Dashboard() {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
+              {isSoundEnabled ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (audio) {
+                      audio.pause();
+                      setAudio(null);
+                    }
+                    setIsSoundEnabled(false);
+                  }}
+                  className="gap-2"
+                >
+                  <VolumeX className="h-4 w-4" />
+                  Mute
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnableSound}
+                  className="gap-2"
+                >
+                  <Volume2 className="h-4 w-4" />
+                  Enable Sound
+                </Button>
+              )}
             </div>
           </div>
         </div>
