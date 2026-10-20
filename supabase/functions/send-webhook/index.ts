@@ -1,6 +1,10 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
-const WEBHOOK_URL = 'http://3.19.185.136:5678/webhook/a86a057c-017e-48db-8f0d-54ee9161e489';
+// Was hardcoded to http://3.19.185.136:5678/webhook/a86a057c-... until that
+// host was lost. Set the ORDER_RECEIVED_WEBHOOK_URL secret to point it at a
+// replacement; unset, the function reports that forwarding is disabled rather
+// than failing against a dead address.
+const WEBHOOK_URL = Deno.env.get('ORDER_RECEIVED_WEBHOOK_URL') ?? '';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,6 +25,14 @@ serve(async (req) => {
     console.log('Parsing request body...');
     const orderData = await req.json();
     console.log('Successfully parsed order data.');
+
+    if (!WEBHOOK_URL) {
+      console.warn('ORDER_RECEIVED_WEBHOOK_URL is not set; skipping forward.');
+      return new Response(
+        JSON.stringify({ ok: true, skipped: 'webhook_not_configured' }),
+        { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }, status: 200 },
+      );
+    }
     
     // For privacy, you might want to remove this log in production
     // console.log('Order Data:', JSON.stringify(orderData, null, 2));
