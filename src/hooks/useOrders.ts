@@ -56,24 +56,31 @@ export function useOrders() {
 
       if (error) throw error;
 
-      // When an order is ready, trigger the webhook via the Supabase Edge Function
+      // When an order is ready, text the customer and fire the outbound webhook.
+      // Deliberately not awaited: the status change is already saved, and a slow
+      // or unreachable endpoint must not hold the UI's isProcessing flag, which
+      // disables every button on every card while it is set.
       if (newStatus === 'ready') {
-        try {
-          const { data: functionData, error: functionError } = await supabase.functions.invoke('send-webhook', {
-            body: order,
+        const orderWithItems = { ...order, ...additionalFields };
+
+        supabase.functions
+          .invoke('send-sms', { body: orderWithItems })
+          .then(({ error: smsError }) => {
+            if (smsError) {
+              console.error('Error sending SMS:', smsError);
+              toast({
+                title: 'SMS not sent',
+                description: `Order ${order.order_id} is ready, but the customer text failed.`,
+                variant: 'destructive',
+              });
+            }
           });
 
-          if (functionError) {
-            throw new Error(`Edge function invocation failed: ${functionError.message}`);
-          }
-        } catch (webhookError) {
-          console.error('Error sending webhook:', webhookError);
-          toast({
-            title: 'Webhook Error',
-            description: 'Failed to send update to webhook.',
-            variant: 'destructive',
+        supabase.functions
+          .invoke('send-webhook', { body: orderWithItems })
+          .then(({ error: webhookError }) => {
+            if (webhookError) console.error('Error sending webhook:', webhookError);
           });
-        }
       }
 
       toast({
