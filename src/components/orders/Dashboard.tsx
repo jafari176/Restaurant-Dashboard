@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Package, RefreshCw, Settings, X, Volume2, VolumeX } from 'lucide-react';
+import { Package, RefreshCw, Settings, Sparkles, X, Volume2, VolumeX } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
@@ -214,6 +214,15 @@ export function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/specials')}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Specials
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

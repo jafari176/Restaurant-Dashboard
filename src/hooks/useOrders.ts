@@ -46,7 +46,9 @@ export function useOrders() {
   const updateOrderStatus = async (
     order: Order,
     newStatus: OrderStatus,
-    additionalFields: Partial<Order> = {}
+    // Columns only: order_items lives in its own table, so letting it through
+    // here would send a nested array to an UPDATE on orders.
+    additionalFields: Partial<Omit<Order, 'order_items'>> = {}
   ) => {
     try {
       const { error } = await supabase
