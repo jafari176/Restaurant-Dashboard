@@ -24,18 +24,38 @@ function toE164(phone: string): string | null {
   return null;
 }
 
-function buildMessage(order: Record<string, unknown>, items: Array<{ item: string; quantity: number }>): string {
-  const name = String(order.customer_name || '').split(' ')[0] || 'there';
-  const summary = items.length
-    ? items.map((i) => `${i.quantity}x ${i.item}`).join(', ')
-    : '';
-  const total = order.subtotal_with_tax != null ? `$${Number(order.subtotal_with_tax).toFixed(2)}` : '';
+const ADDRESS = '10380 Boulevard Gouin O, Pierrefonds-Roxboro';
 
-  let msg = `Hi ${name}, your Al Quds Grill order #${order.order_id} is ready for pickup!`;
-  if (summary) msg += `\n\n${summary}`;
-  if (total) msg += `\nTotal: ${total}`;
-  msg += `\n\n10380 Boulevard Gouin O, Pierrefonds-Roxboro. See you soon!`;
-  return msg;
+/**
+ * Bilingual, French first: the restaurant is in Montreal and the agent
+ * greets callers in French before English.
+ */
+function buildMessage(order: Record<string, unknown>, items: Array<{ item: string; quantity: number }>): string {
+  const name = String(order.customer_name || '').split(' ')[0] || '';
+  const greetFr = name ? `Bonjour ${name}` : 'Bonjour';
+  const greetEn = name ? `Hi ${name}` : 'Hi';
+
+  const summary = items.length ? items.map((i) => `${i.quantity}x ${i.item}`).join(', ') : '';
+  const amount = order.subtotal_with_tax != null ? Number(order.subtotal_with_tax).toFixed(2) : '';
+  // Quebec convention: comma as the decimal mark, dollar sign after the number.
+  const totalFr = amount ? `${amount.replace('.', ',')} $` : '';
+  const totalEn = amount ? `$${amount}` : '';
+
+  const fr = [
+    `${greetFr}, votre commande Al Quds Grill #${order.order_id} est prête!`,
+    summary,
+    totalFr ? `Total: ${totalFr}` : '',
+    ADDRESS,
+  ].filter(Boolean).join('\n');
+
+  const en = [
+    `${greetEn}, your Al Quds Grill order #${order.order_id} is ready for pickup!`,
+    summary,
+    totalEn ? `Total: ${totalEn}` : '',
+    ADDRESS,
+  ].filter(Boolean).join('\n');
+
+  return `${fr}\n\n---\n\n${en}`;
 }
 
 Deno.serve(async (req) => {
