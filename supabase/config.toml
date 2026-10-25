@@ -8,3 +8,6 @@ project_id = "dfiklgsvltfmoxudjalb"
 
 [functions.send-sms]
   verify_jwt = false
+
+[functions.call-start]
+  verify_jwt = false
