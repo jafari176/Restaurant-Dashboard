@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { lookupPrice } from './menu.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,11 +48,34 @@ function parseItems(raw: unknown): OrderItem[] {
       const name = typeof e?.item === 'string' ? e.item : typeof e?.name === 'string' ? e.name : '';
       if (!name) return null;
       const quantity = Number(e?.quantity ?? 1);
-      const price = Number(e?.price ?? 0);
+      const stated = Number(e?.price ?? 0);
+
+      // The agent no longer speaks per-item prices, so the post-call extractor
+      // has nothing to read and emits 0 for some or all items (order 1083 came
+      // through with five items and a $0.00 total). The menu is authoritative;
+      // the transcript only says *what* was ordered.
+      const fromMenu = lookupPrice(name);
+      let price = Number.isFinite(stated) && stated > 0 ? stated : 0;
+
+      if (fromMenu !== null) {
+        if (price === 0) {
+          price = fromMenu;
+        } else if (Math.abs(price - fromMenu) > 0.01) {
+          // Trust the menu, but leave a trail: a mismatch means either the
+          // menu table has drifted from the prompt or the model misheard.
+          console.warn(
+            `price mismatch for "${name}": extractor said ${price}, menu says ${fromMenu}; using menu`,
+          );
+          price = fromMenu;
+        }
+      } else if (price === 0) {
+        console.error(`no menu price for "${name}" and extractor gave 0; order will undercharge`);
+      }
+
       return {
         item: name,
         quantity: Number.isFinite(quantity) && quantity > 0 ? Math.round(quantity) : 1,
-        price: Number.isFinite(price) && price >= 0 ? price : 0,
+        price,
       };
     })
     .filter((i): i is OrderItem => i !== null);
