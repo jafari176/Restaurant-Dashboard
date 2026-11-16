@@ -96,23 +96,28 @@ export function OrderCard({
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         {/*
           Reprint. Accepting an order prints the ticket automatically, so this
-          is for the second copy: a jam, a torn receipt, or a ticket that
-          walked off the pass.
+          is the second copy: a jam, a torn receipt, or a ticket that walked
+          off the pass.
+
+          Labelled rather than icon-only. As a bare outlined square beside two
+          filled colour buttons it read as an empty box, and nobody finds that
+          mid-service on an iPad. h-12 matches the 44px touch target used
+          across this dashboard.
         */}
         <Button
           onClick={() => printOrder(order)}
-          variant="outline"
-          size="icon"
+          variant="secondary"
+          className="h-12 gap-2 px-4 text-base font-medium"
           aria-label={`Print ticket for order ${order.order_id}`}
-          title="Print ticket"
         >
-          <Printer className="h-4 w-4" />
+          <Printer className="h-5 w-5" />
+          Print
         </Button>
         {onAccept && (
           <Button
             onClick={onAccept}
             disabled={isLoading}
-            className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+            className="h-12 flex-1 text-base bg-success hover:bg-success/90 text-success-foreground"
           >
             Accept
           </Button>
@@ -122,7 +127,7 @@ export function OrderCard({
             onClick={onReject}
             disabled={isLoading}
             variant="destructive"
-            className="flex-1"
+            className="h-12 flex-1 text-base"
           >
             Reject
           </Button>
@@ -131,7 +136,7 @@ export function OrderCard({
           <Button
             onClick={onMarkReady}
             disabled={isLoading}
-            className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+            className="h-12 flex-1 text-base bg-success hover:bg-success/90 text-success-foreground"
           >
             Mark Ready
           </Button>
@@ -140,7 +145,7 @@ export function OrderCard({
           <Button
             onClick={onMarkReceived}
             disabled={isLoading}
-            className="flex-1"
+            className="h-12 flex-1 text-base"
           >
             Mark Received
           </Button>

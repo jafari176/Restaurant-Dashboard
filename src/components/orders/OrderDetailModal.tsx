@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Phone, User, Clock, Package, DollarSign, Hash, CheckCircle2 } from 'lucide-react';
+import { Phone, User, Clock, Package, DollarSign, Hash, CheckCircle2, Printer } from 'lucide-react';
 import { Order } from '@/types/order';
 import { StatusBadge } from './StatusBadge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { printOrder } from '@/lib/printOrder';
 
 interface OrderDetailModalProps {
   order: Order | null;
@@ -138,6 +139,22 @@ export function OrderDetailModal({
               ))}
             </div>
           </div>
+
+          {/*
+            Print sits on its own row, outside the status-action block below:
+            that block only renders when the order has a next status, so a
+            received order would otherwise offer no way to reprint its ticket.
+          */}
+          <Separator />
+          <Button
+            onClick={() => printOrder(order)}
+            variant="secondary"
+            className="h-12 w-full gap-2 text-base font-medium"
+            aria-label={`Print ticket for order ${order.order_id}`}
+          >
+            <Printer className="h-5 w-5" />
+            Print ticket
+          </Button>
 
           {/* Actions */}
           {(onAccept || onReject || onMarkReady || onMarkReceived) && (
