@@ -46,9 +46,13 @@ export function useOrders() {
   const updateOrderStatus = async (
     order: Order,
     newStatus: OrderStatus,
-    // Columns only: order_items lives in its own table, so letting it through
-    // here would send a nested array to an UPDATE on orders.
-    additionalFields: Partial<Omit<Order, 'order_items'>> = {}
+    // Columns this function is allowed to set. order_items lives in its own
+    // table, and special_requests/pickup_time are written once by the
+    // post-call webhook — a status change must never overwrite the caller's
+    // own note.
+    additionalFields: Partial<
+      Omit<Order, 'order_items' | 'special_requests' | 'pickup_time'>
+    > = {}
   ) => {
     try {
       const { error } = await supabase

@@ -14,8 +14,6 @@ import { Order } from '@/types/order';
  * column of monospace text.
  */
 
-const TAX_RATE = 1.14975;
-
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -32,75 +30,99 @@ function formatPhone(raw: string): string {
 
 export function buildTicketHtml(order: Order): string {
   const items = order.order_items ?? [];
-
-  const subtotal =
-    order.subtotal ?? items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const total = order.subtotal_with_tax ?? subtotal * TAX_RATE;
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
 
   const placed = order.new_order_at ? new Date(order.new_order_at) : new Date();
-  const stamp = placed.toLocaleString('en-CA', {
-    timeZone: 'America/Toronto',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const clock = (d: Date) =>
+    d.toLocaleTimeString('en-CA', {
+      timeZone: 'America/Toronto',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
 
   const rows = items
-    .map((i) => {
-      const name = escapeHtml(i.item);
-      const line = (i.price * i.quantity).toFixed(2);
-      return `<tr><td class="q">${i.quantity}x</td><td class="n">${name}</td><td class="p">${line}</td></tr>`;
-    })
+    .map(
+      (i) => `<div class="it">
+        <span class="qty">${i.quantity}&times;</span>
+        <span class="nm">${escapeHtml(i.item)}</span>
+      </div>`,
+    )
     .join('');
+
+  // Both are nullable and only populated after the pickup_time /
+  // special_requests migration, so each block is omitted when empty rather
+  // than printing an empty bordered box on every ticket.
+  const readyBy = (order.pickup_time ?? '').trim();
+  const note = (order.special_requests ?? '').trim();
+
+  const noteBlock = note
+    ? `<div class="note">
+         <div class="note-h">SPECIAL INSTRUCTIONS</div>
+         <div>${escapeHtml(note)}</div>
+       </div>`
+    : '';
 
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Order ${escapeHtml(order.order_id)}</title>
+<title>Ticket ${escapeHtml(order.order_id)}</title>
 <style>
   @page { size: 80mm auto; margin: 4mm; }
   * { box-sizing: border-box; }
   body {
-    font-family: "Menlo", "Consolas", monospace;
-    font-size: 12px;
-    line-height: 1.35;
-    color: #000;
-    margin: 0;
-    width: 72mm;
+    font-family: "Menlo", "Consolas", "Courier New", monospace;
+    font-size: 12px; line-height: 1.4; color: #000; margin: 0; width: 72mm;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .5px; }
-  .muted { font-size: 11px; }
-  .big { font-size: 20px; font-weight: 700; margin: 6px 0 2px; }
-  hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  td { vertical-align: top; padding: 2px 0; }
-  td.q { width: 10mm; font-weight: 700; }
-  td.n { word-break: break-word; }
-  td.p { width: 18mm; text-align: right; white-space: nowrap; }
-  .tot td { padding-top: 3px; }
-  .tot .lbl { text-align: right; }
-  .grand td { font-size: 14px; font-weight: 700; border-top: 1px solid #000; padding-top: 4px; }
-  footer { margin-top: 8px; text-align: center; font-size: 11px; }
+  .brand { text-align: center; letter-spacing: 4px; font-size: 15px; font-weight: 700; }
+  .sub { text-align: center; letter-spacing: 3px; font-size: 9px; margin-top: 2px; }
+  .rule { border-top: 2px dashed #000; margin: 7px 0; }
+  .lbl { text-align: center; font-size: 9px; letter-spacing: 2px; }
+  .num { text-align: center; font-size: 30px; font-weight: 700; letter-spacing: 1px; margin: 1px 0 7px; }
+  /* Reversed block: the one thing that must read from across the kitchen. */
+  .type {
+    background: #000; color: #fff; text-align: center;
+    font-size: 16px; font-weight: 700; letter-spacing: 5px; padding: 7px 0; margin-bottom: 7px;
+  }
+  .meta { display: flex; justify-content: space-between; gap: 6px; }
+  .meta .v { text-align: right; }
+  .meta.strong { font-weight: 700; }
+  .line { border-top: 1px solid #000; margin: 7px 0; }
+  .it { display: flex; gap: 6px; margin: 7px 0; page-break-inside: avoid; }
+  .qty { font-weight: 700; font-size: 14px; min-width: 9mm; }
+  .nm { font-weight: 700; font-size: 14px; word-break: break-word; }
+  .count { display: flex; justify-content: space-between; font-weight: 700; }
+  .note { border: 1px dashed #000; padding: 5px 6px; margin-top: 7px; page-break-inside: avoid; }
+  .note-h { font-weight: 700; font-size: 11px; margin-bottom: 2px; }
+  footer { margin-top: 10px; text-align: center; font-size: 10px; }
 </style>
 </head>
 <body>
-  <h1>AL QUDS GRILL</h1>
-  <div class="muted">10380 Boul Gouin O, Pierrefonds</div>
-  <hr>
-  <div class="big">#${escapeHtml(order.order_id)}</div>
-  <div>${escapeHtml(order.customer_name || 'Guest')}</div>
-  <div class="muted">${escapeHtml(formatPhone(order.phone_number))}</div>
-  <div class="muted">Placed ${escapeHtml(stamp)}</div>
-  <hr>
-  <table>${rows}</table>
-  <hr>
-  <table class="tot">
-    <tr><td class="lbl">Subtotal</td><td class="p">${subtotal.toFixed(2)}</td></tr>
-    <tr class="grand"><td class="lbl">TOTAL</td><td class="p">${total.toFixed(2)}</td></tr>
-  </table>
-  <footer>Merci / Thank you</footer>
+  <div class="brand">NEUVA</div>
+  <div class="sub">KITCHEN TICKET</div>
+  <div class="rule"></div>
+
+  <div class="lbl">ORDER</div>
+  <div class="num">#${escapeHtml(order.order_id)}</div>
+
+  <div class="type">PICKUP</div>
+
+  <div class="meta"><span>Placed</span><span class="v">${escapeHtml(clock(placed))}</span></div>
+  ${readyBy ? `<div class="meta strong"><span>READY BY</span><span class="v">${escapeHtml(readyBy)}</span></div>` : ''}
+  <div class="meta"><span>Source</span><span class="v">Phone</span></div>
+  <div class="meta"><span>Customer</span><span class="v">${escapeHtml(order.customer_name || 'Guest')}</span></div>
+  <div class="meta"><span>Phone</span><span class="v">${escapeHtml(formatPhone(order.phone_number))}</span></div>
+
+  <div class="rule"></div>
+  ${rows}
+  <div class="line"></div>
+  <div class="count"><span>ITEMS</span><span>${itemCount}</span></div>
+  ${noteBlock}
+
+  <footer>
+    Order taken by Neuva AI<br>neuvasol.com
+  </footer>
 </body>
 </html>`;
 }

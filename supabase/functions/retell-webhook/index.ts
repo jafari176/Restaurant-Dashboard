@@ -129,6 +129,19 @@ Deno.serve(async (req) => {
 
     const items = parseItems(analysis.items);
     const customerName = (analysis.customer_name || '').toString().trim() || 'Phone Customer';
+
+    // Captured by post-call analysis since the pipeline was rebuilt, but
+    // discarded until the kitchen ticket needed them. Stored as the caller
+    // said it: "in 20 minutes" is as common as a clock time, and parsing it
+    // wrongly would lose the instruction. Empty strings become null so the
+    // ticket can test one thing.
+    const text = (v: unknown): string | null => {
+      const t = (v ?? '').toString().trim();
+      if (!t || t.toLowerCase() === 'null' || t.toLowerCase() === 'none') return null;
+      return t.slice(0, 500);
+    };
+    const specialRequests = text(analysis.special_requests);
+    const pickupTime = text(analysis.pickup_time);
     const phoneNumber = normalizePhone(analysis.phone_number, call?.from_number);
 
     if (!phoneNumber) {
@@ -162,6 +175,8 @@ Deno.serve(async (req) => {
       .insert({
         customer_name: customerName,
         phone_number: phoneNumber,
+        special_requests: specialRequests,
+        pickup_time: pickupTime,
         subtotal,
         subtotal_with_tax: subtotalWithTax,
         status: 'new',
