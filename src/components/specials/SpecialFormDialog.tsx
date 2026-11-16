@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Special, SpecialInput, comingWeekend } from '@/types/special';
+import { Special, SpecialInput, comingWeekend, todayInToronto } from '@/types/special';
 
 interface SpecialFormDialogProps {
   open: boolean;
@@ -35,7 +35,19 @@ function emptyForm(): SpecialInput {
   };
 }
 
+/** "Fri Nov 20" — short enough for the banner, unambiguous on an iPad. */
+function formatDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-CA', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 export function SpecialFormDialog({ open, onClose, onSave, special }: SpecialFormDialogProps) {
+  const today = todayInToronto();
   const [form, setForm] = useState<SpecialInput>(emptyForm());
   const [priceText, setPriceText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -195,6 +207,52 @@ export function SpecialFormDialog({ open, onClose, onSave, special }: SpecialFor
             </div>
           </div>
           {errors.end_date && <p className="text-sm text-destructive">{errors.end_date}</p>}
+
+          {/*
+            The form pre-fills the coming weekend, so a special added on a
+            Monday is dated for Friday and the agent stays silent until then.
+            That looked like a broken feature often enough to be worth saying
+            out loud, with a one-tap way to start it now.
+          */}
+          <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+            <p className="text-sm" aria-live="polite">
+              {form.end_date < today ? (
+                <span className="text-destructive font-medium">
+                  These dates are in the past — the agent will never offer this.
+                </span>
+              ) : form.start_date > today ? (
+                <>
+                  <span className="font-medium">Not live yet.</span> The agent starts
+                  offering this on {formatDay(form.start_date)} and stops after{' '}
+                  {formatDay(form.end_date)}.
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-green-600 dark:text-green-500">
+                    Live now.
+                  </span>{' '}
+                  The agent offers this on calls until {formatDay(form.end_date)}.
+                </>
+              )}
+            </p>
+            {form.start_date > today && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    start_date: today,
+                    end_date: form.end_date < today ? today : form.end_date,
+                  })
+                }
+              >
+                Start today instead
+              </Button>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">

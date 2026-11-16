@@ -1,9 +1,10 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { Phone, User, Package, Clock, DollarSign } from 'lucide-react';
+import { Phone, User, Package, Clock, DollarSign, Printer } from 'lucide-react';
 import { Order } from '@/types/order';
 import { StatusBadge } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { printOrder } from '@/lib/printOrder';
 
 interface OrderCardProps {
   order: Order;
@@ -93,6 +94,20 @@ export function OrderCard({
       )}
 
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+        {/*
+          Reprint. Accepting an order prints the ticket automatically, so this
+          is for the second copy: a jam, a torn receipt, or a ticket that
+          walked off the pass.
+        */}
+        <Button
+          onClick={() => printOrder(order)}
+          variant="outline"
+          size="icon"
+          aria-label={`Print ticket for order ${order.order_id}`}
+          title="Print ticket"
+        >
+          <Printer className="h-4 w-4" />
+        </Button>
         {onAccept && (
           <Button
             onClick={onAccept}

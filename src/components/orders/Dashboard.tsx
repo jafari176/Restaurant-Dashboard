@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { printOrder } from '@/lib/printOrder';
 import { Package, RefreshCw, Settings, Sparkles, X, Volume2, VolumeX } from 'lucide-react';
 import { formatDistanceToNow, parseISO, isWithinInterval, startOfDay, endOfDay, isSameDay, isAfter, isBefore } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -143,11 +144,18 @@ export function Dashboard() {
       setAudio(null);
     }
     setIsProcessing(true);
-    await updateOrderStatus(order, 'in_progress', {
-      accepted_at: new Date().toISOString(),
-    });
+    const accepted_at = new Date().toISOString();
+    const ok = await updateOrderStatus(order, 'in_progress', { accepted_at });
     setIsProcessing(false);
     setSelectedOrder(null);
+
+    // Print the kitchen ticket once the order is actually accepted. Called
+    // straight from the tap handler so iPad Safari treats it as user-initiated;
+    // skipped on failure so a ticket never goes to the pass for an order the
+    // database rejected.
+    if (ok !== false) {
+      printOrder({ ...order, status: 'in_progress', accepted_at });
+    }
   };
 
   const handleReject = async () => {
